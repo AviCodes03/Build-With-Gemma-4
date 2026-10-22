@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapExplain AI — Learn Faster with Gemma</title>
+    <meta name="description" content="AI learning assistant powered by Gemma open-weight models. Understand complex questions in Simple, Step-by-Step, or Exam-Ready styles.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Marked.js for safe Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation & Context -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo-mark">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>SnapExplain <span class="accent-text">AI</span></h1>
+                    <span class="brand-tag">Gemma Challenge Edition</span>
+                </div>
+            </div>
+
+            <!-- Backend Status Card -->
+            <div class="status-card" id="systemStatusCard">
+                <div class="status-indicator">
+                    <span class="status-dot checking" id="statusDot"></span>
+                    <span class="status-label" id="statusLabel">Checking backend...</span>
+                </div>
+                <div class="model-badge" id="modelBadge">
+                    <span class="model-icon">🤖</span>
+                    <span class="model-name" id="modelName">Gemma</span>
+                </div>
+                <div class="status-details" id="statusDetails"></div>
+            </div>
+
+            <!-- Preset / Example Prompts -->
+            <div class="sidebar-section">
+                <h3 class="section-title">Quick Try Examples</h3>
+                <div class="example-list">
+                    <button class="example-chip" data-prompt="Why does dividing by zero lead to undefined in mathematics? Use an intuitive physical analogy." data-style="simple">
+                        <span class="chip-icon">➗</span>
+                        <span class="chip-text">Why divide by zero is undefined</span>
+                    </button>
+                    <button class="example-chip" data-prompt="Explain how the Chain Rule works in Calculus and solve: d/dx of sin(3x^2 + 5)." data-style="step_by_step">
+                        <span class="chip-icon">📐</span>
+                        <span class="chip-text">Calculus: Chain Rule Step-by-Step</span>
+                    </button>
+                    <button class="example-chip" data-prompt="What is Quantum Superposition and how does Schrödinger's cat thought experiment demonstrate it?" data-style="simple">
+                        <span class="chip-icon">⚛️</span>
+                        <span class="chip-text">Quantum Superposition Intuition</span>
+                    </button>
+                    <button class="example-chip" data-prompt="Define Mitochondria cellular respiration. Give the overall formula, ATP yield, and key exam definitions." data-style="exam_ready">
+                        <span class="chip-icon">🧬</span>
+                        <span class="chip-text">Cellular Respiration Exam Prep</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Explanation Styles Reference -->
+            <div class="sidebar-section styles-guide">
+                <h3 class="section-title">Explanation Modes</h3>
+                <div class="guide-item">
+                    <div class="guide-icon">🌱</div>
+                    <div>
+                        <strong>Simple</strong>
+                        <p>No jargon, relatable analogies for rapid intuition.</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-icon">🪜</div>
+                    <div>
+                        <strong>Step-by-Step</strong>
+                        <p>Numbered logic, formula breakdown, and pitfalls.</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-icon">🎯</div>
+                    <div>
+                        <strong>Exam Ready</strong>
+                        <p>Keywords, marking points, and formal answers.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="sidebar-footer">
+                <p>Built with <span class="heart">♥</span> using official <strong>Google GenAI</strong> and open-weight <strong>Gemma</strong>.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Announcement Bar -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h2 class="page-title">Ask. Understand. Master.</h2>
+                    <p class="page-subtitle">Personalized academic tutoring powered strictly by Google's Gemma model.</p>
+                </div>
+                <div class="header-right">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="header-link">
+                        <span>Get API Key</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                    </a>
+                </div>
+            </header>
+
+            <div class="workspace-grid">
+                <!-- Left Input Panel -->
+                <section class="input-card">
+                    <form id="explainForm" class="explain-form">
+                        <!-- Mode Selector -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span>1. Select Explanation Style</span>
+                            </label>
+                            <div class="style-selector" role="radiogroup">
+                                <label class="style-option active" data-style="simple">
+                                    <input type="radio" name="style" value="simple" checked>
+                                    <span class="style-icon">🌱</span>
+                                    <div class="style-info">
+                                        <span class="style-name">Simple</span>
+                                        <span class="style-desc">Intuitive & analogies</span>
+                                    </div>
+                                </label>
+
+                                <label class="style-option" data-style="step_by_step">
+                                    <input type="radio" name="style" value="step_by_step">
+                                    <span class="style-icon">🪜</span>
+                                    <div class="style-info">
+                                        <span class="style-name">Step-by-Step</span>
+                                        <span class="style-desc">Guided reasoning</span>
+                                    </div>
+                                </label>
+
+                                <label class="style-option" data-style="exam_ready">
+                                    <input type="radio" name="style" value="exam_ready">
+                                    <span class="style-icon">🎯</span>
+                                    <div class="style-info">
+                                        <span class="style-name">Exam Ready</span>
+                                        <span class="style-desc">Keywords & full marks</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Question Input Area -->
+                        <div class="form-group">
+                            <div class="label-row">
+                                <label for="questionInput" class="form-label">
+                                    <span>2. Your Question or Problem</span>
+                                </label>
+                                <button type="button" id="clearBtn" class="text-btn">Clear</button>
+                            </div>
+                            <div class="textarea-wrapper">
+                                <textarea 
+                                    id="questionInput" 
+                                    name="question"
+                                    placeholder="Type your difficult homework question, concept, or formula here... (e.g. 'How does photosynthesis convert light energy into chemical energy?')"
+                                    rows="5"
+                                    required
+                                    maxlength="2500"
+                                ></textarea>
+                                <div class="textarea-footer">
+                                    <span class="char-count" id="charCount">0 / 2500</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Upload (with capability verification) -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span>3. Image Question</span>
+                                <span class="badge-capability" id="imageCapabilityBadge">Text-Only Model</span>
+                            </label>
+                            
+                            <div class="image-upload-zone" id="imageUploadZone">
+                                <input type="file" id="imageInput" accept="image/*" class="file-input" disabled>
+                                <div class="upload-placeholder" id="uploadPlaceholder">
+                                    <div class="upload-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                                            <circle cx="9" cy="9" r="2"/>
+                                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                        </svg>
+                                    </div>
+                                    <div class="upload-text">
+                                        <span class="upload-title" id="uploadTitle">Image upload disabled for this Gemma model</span>
+                                        <span class="upload-hint" id="uploadHint">Gemma 2 open-weight models on Google AI Studio are text-optimized. Type or paste your question text above.</span>
+                                    </div>
+                                </div>
+                                <div class="image-preview-wrapper hidden" id="imagePreviewWrapper">
+                                    <img id="imagePreview" alt="Question preview">
+                                    <button type="button" id="removeImageBtn" class="remove-image-btn" title="Remove image">&times;</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="form-actions">
+                            <button type="submit" id="submitBtn" class="primary-btn">
+                                <span class="btn-text">Explain with Gemma</span>
+                                <span class="btn-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        <polyline points="12 5 19 12 12 19"></polyline>
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Right Answer & Practice Panel -->
+                <section class="output-card" id="outputCard">
+                    <!-- Setup Alert (shows if missing API key) -->
+                    <div class="setup-alert hidden" id="setupAlert">
+                        <div class="alert-icon">⚠️</div>
+                        <div class="alert-content">
+                            <h4 id="alertTitle">API Key Required</h4>
+                            <p id="alertMessage">Please paste your Google AI Studio API key into the <code>.env</code> file in your project folder.</p>
+                            <div class="alert-actions">
+                                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="alert-btn">Get Free Gemini API Key &rarr;</a>
+                                <button type="button" id="recheckStatusBtn" class="alert-secondary-btn">Refresh Status</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Initial Empty State -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-illustration">
+                            <div class="sparkle-ring">
+                                <span class="emoji-floating">💡</span>
+                            </div>
+                        </div>
+                        <h3>Your Explanation Will Appear Here</h3>
+                        <p>Choose an explanation style, enter your question on the left, and click <strong>"Explain with Gemma"</strong>.</p>
+                        
+                        <div class="feature-bullets">
+                            <div class="bullet-item">
+                                <span class="bullet-icon">✨</span>
+                                <span>Clear conceptual analogies tailored for students</span>
+                            </div>
+                            <div class="bullet-item">
+                                <span class="bullet-icon">🎯</span>
+                                <span>Generate targeted practice questions with 1-click</span>
+                            </div>
+                            <div class="bullet-item">
+                                <span class="bullet-icon">🛡️</span>
+                                <span>Zero fake data — strictly powered by official Gemma models</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div class="loading-state hidden" id="loadingState">
+                        <div class="loading-spinner-wrapper">
+                            <div class="pulse-spinner"></div>
+                        </div>
+                        <h4 class="loading-title">Gemma is analyzing your question...</h4>
+                        <p class="loading-step" id="loadingStep">Formulating step-by-step breakdown</p>
+                        
+                        <div class="skeleton-block">
+                            <div class="skeleton-line long"></div>
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line short"></div>
+                            <div class="skeleton-line long"></div>
+                        </div>
+                    </div>
+
+                    <!-- Answer Content View -->
+                    <div class="answer-view hidden" id="answerView">
+                        <div class="answer-header">
+                            <div class="header-tags">
+                                <span class="tag-badge style-tag" id="answerStyleTag">Simple</span>
+                                <span class="tag-badge model-tag" id="answerModelTag">Gemma</span>
+                            </div>
+                            <div class="header-actions">
+                                <button type="button" id="copyBtn" class="icon-btn" title="Copy to clipboard">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                                    </svg>
+                                    <span id="copyText">Copy</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Rendered Markdown Explanation -->
+                        <div class="markdown-body" id="explanationText"></div>
+
+                        <!-- Practice Question Action Section -->
+                        <div class="practice-action-box">
+                            <div class="practice-action-header">
+                                <div class="action-icon">📝</div>
+                                <div>
+                                    <h4>Ready to test your understanding?</h4>
+                                    <p>Have Gemma generate a fresh practice problem based on this concept.</p>
+                                </div>
+                            </div>
+                            <button type="button" id="generatePracticeBtn" class="secondary-btn">
+                                <span class="practice-btn-spinner hidden" id="practiceSpinner"></span>
+                                <span id="practiceBtnText">Generate Practice Question</span>
+                            </button>
+                        </div>
+
+                        <!-- Practice Problem Card (revealed when generated) -->
+                        <div class="practice-card hidden" id="practiceCard">
+                            <div class="practice-card-header">
+                                <span class="badge-practice">🎯 Practice Challenge</span>
+                                <span class="badge-practice-model" id="practiceModelBadge">Gemma</span>
+                            </div>
+                            
+                            <div class="practice-question-text" id="practiceQuestionText"></div>
+                            
+                            <div class="practice-toggles">
+                                <button type="button" id="toggleHintBtn" class="pill-toggle">
+                                    <span>💡 Reveal Hint</span>
+                                </button>
+                                <button type="button" id="toggleSolutionBtn" class="pill-toggle">
+                                    <span>✅ Reveal Solution</span>
+                                </button>
+                            </div>
+
+                            <div class="practice-collapse hidden" id="hintBox">
+                                <div class="collapse-header">Hint</div>
+                                <div class="collapse-body" id="hintText"></div>
+                            </div>
+
+                            <div class="practice-collapse hidden" id="solutionBox">
+                                <div class="collapse-header">Step-by-Step Solution</div>
+                                <div class="collapse-body" id="solutionText"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast hidden" id="toast"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
