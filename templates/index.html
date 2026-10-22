@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SnapExplain AI — Learn Faster with Gemma</title>
-    <meta name="description" content="AI learning assistant powered by Gemma open-weight models. Understand complex questions in Simple, Step-by-Step, or Exam-Ready styles.">
+    <meta name="description" content="AI learning assistant powered by Gemma open-weight models. Understand complex questions in Quick & Easy, Step-by-Step, or Exam-Ready styles.">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,11 @@
     
     <!-- Marked.js for safe Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    
+    <!-- KaTeX for crisp mathematical LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     
     <!-- Stylesheet -->
     <link rel="stylesheet" href="/static/css/style.css">
@@ -50,7 +55,7 @@
             <div class="sidebar-section">
                 <h3 class="section-title">Quick Try Examples</h3>
                 <div class="example-list">
-                    <button class="example-chip" data-prompt="Why does dividing by zero lead to undefined in mathematics? Use an intuitive physical analogy." data-style="simple">
+                    <button class="example-chip" data-prompt="Why does dividing by zero lead to undefined in mathematics? Use an intuitive physical analogy." data-style="quick_easy">
                         <span class="chip-icon">➗</span>
                         <span class="chip-text">Why divide by zero is undefined</span>
                     </button>
@@ -58,7 +63,7 @@
                         <span class="chip-icon">📐</span>
                         <span class="chip-text">Calculus: Chain Rule Step-by-Step</span>
                     </button>
-                    <button class="example-chip" data-prompt="What is Quantum Superposition and how does Schrödinger's cat thought experiment demonstrate it?" data-style="simple">
+                    <button class="example-chip" data-prompt="What is Quantum Superposition and how does Schrödinger's cat thought experiment demonstrate it?" data-style="quick_easy">
                         <span class="chip-icon">⚛️</span>
                         <span class="chip-text">Quantum Superposition Intuition</span>
                     </button>
@@ -75,22 +80,22 @@
                 <div class="guide-item">
                     <div class="guide-icon">🌱</div>
                     <div>
-                        <strong>Simple</strong>
-                        <p>No jargon, relatable analogies for rapid intuition.</p>
+                        <strong>Quick & Easy</strong>
+                        <p>3–5 short sentences with an everyday analogy.</p>
                     </div>
                 </div>
                 <div class="guide-item">
                     <div class="guide-icon">🪜</div>
                     <div>
                         <strong>Step-by-Step</strong>
-                        <p>Numbered logic, formula breakdown, and pitfalls.</p>
+                        <p>3–5 short numbered steps with clear explanations.</p>
                     </div>
                 </div>
                 <div class="guide-item">
                     <div class="guide-icon">🎯</div>
                     <div>
                         <strong>Exam Ready</strong>
-                        <p>Keywords, marking points, and formal answers.</p>
+                        <p>Short definition, 3–5 important points & one brief example.</p>
                     </div>
                 </div>
             </div>
@@ -103,7 +108,7 @@
 
         <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Top Announcement Bar -->
+            <!-- Top Header -->
             <header class="top-header">
                 <div class="header-left">
                     <h2 class="page-title">Ask. Understand. Master.</h2>
@@ -127,12 +132,12 @@
                                 <span>1. Select Explanation Style</span>
                             </label>
                             <div class="style-selector" role="radiogroup">
-                                <label class="style-option active" data-style="simple">
-                                    <input type="radio" name="style" value="simple" checked>
+                                <label class="style-option active" data-style="quick_easy">
+                                    <input type="radio" name="style" value="quick_easy" checked>
                                     <span class="style-icon">🌱</span>
                                     <div class="style-info">
-                                        <span class="style-name">Simple</span>
-                                        <span class="style-desc">Intuitive & analogies</span>
+                                        <span class="style-name">Quick & Easy</span>
+                                        <span class="style-desc">3–5 sentences & analogy</span>
                                     </div>
                                 </label>
 
@@ -141,7 +146,7 @@
                                     <span class="style-icon">🪜</span>
                                     <div class="style-info">
                                         <span class="style-name">Step-by-Step</span>
-                                        <span class="style-desc">Guided reasoning</span>
+                                        <span class="style-desc">3–5 numbered steps</span>
                                     </div>
                                 </label>
 
@@ -150,7 +155,7 @@
                                     <span class="style-icon">🎯</span>
                                     <div class="style-info">
                                         <span class="style-name">Exam Ready</span>
-                                        <span class="style-desc">Keywords & full marks</span>
+                                        <span class="style-desc">Definition, 3–5 points & example</span>
                                     </div>
                                 </label>
                             </div>
@@ -223,7 +228,7 @@
                     </form>
                 </section>
 
-                <!-- Right Answer & Practice Panel -->
+                <!-- Right Answer & Practice Quiz Panel -->
                 <section class="output-card" id="outputCard">
                     <!-- Setup Alert (shows if missing API key) -->
                     <div class="setup-alert hidden" id="setupAlert">
@@ -250,16 +255,20 @@
                         
                         <div class="feature-bullets">
                             <div class="bullet-item">
-                                <span class="bullet-icon">✨</span>
-                                <span>Clear conceptual analogies tailored for students</span>
+                                <span class="bullet-icon">🌱</span>
+                                <span><strong>Quick & Easy:</strong> 3–5 short sentences with intuitive everyday analogies</span>
+                            </div>
+                            <div class="bullet-item">
+                                <span class="bullet-icon">🪜</span>
+                                <span><strong>Step-by-Step:</strong> 3–5 short numbered steps with clear explanations</span>
                             </div>
                             <div class="bullet-item">
                                 <span class="bullet-icon">🎯</span>
-                                <span>Generate targeted practice questions with 1-click</span>
+                                <span><strong>Exam Ready:</strong> Short definition, 3–5 key points & one brief example</span>
                             </div>
                             <div class="bullet-item">
-                                <span class="bullet-icon">🛡️</span>
-                                <span>Zero fake data — strictly powered by official Gemma models</span>
+                                <span class="bullet-icon">📝</span>
+                                <span><strong>Interactive 5-Q Quiz:</strong> 3 MCQs + 2 Short Answers with automated grading</span>
                             </div>
                         </div>
                     </div>
@@ -270,7 +279,7 @@
                             <div class="pulse-spinner"></div>
                         </div>
                         <h4 class="loading-title">Gemma is analyzing your question...</h4>
-                        <p class="loading-step" id="loadingStep">Formulating step-by-step breakdown</p>
+                        <p class="loading-step" id="loadingStep">Formulating explanation</p>
                         
                         <div class="skeleton-block">
                             <div class="skeleton-line long"></div>
@@ -284,7 +293,7 @@
                     <div class="answer-view hidden" id="answerView">
                         <div class="answer-header">
                             <div class="header-tags">
-                                <span class="tag-badge style-tag" id="answerStyleTag">Simple</span>
+                                <span class="tag-badge style-tag" id="answerStyleTag">Quick & Easy</span>
                                 <span class="tag-badge model-tag" id="answerModelTag">Gemma</span>
                             </div>
                             <div class="header-actions">
@@ -301,47 +310,86 @@
                         <!-- Rendered Markdown Explanation -->
                         <div class="markdown-body" id="explanationText"></div>
 
-                        <!-- Practice Question Action Section -->
+                        <!-- Practice Quiz Action Section -->
                         <div class="practice-action-box">
                             <div class="practice-action-header">
                                 <div class="action-icon">📝</div>
                                 <div>
                                     <h4>Ready to test your understanding?</h4>
-                                    <p>Have Gemma generate a fresh practice problem based on this concept.</p>
+                                    <p>Have Gemma generate a 5-question practice quiz based on this concept.</p>
                                 </div>
                             </div>
                             <button type="button" id="generatePracticeBtn" class="secondary-btn">
                                 <span class="practice-btn-spinner hidden" id="practiceSpinner"></span>
-                                <span id="practiceBtnText">Generate Practice Question</span>
+                                <span id="practiceBtnText">Generate Practice Quiz</span>
                             </button>
                         </div>
 
-                        <!-- Practice Problem Card (revealed when generated) -->
-                        <div class="practice-card hidden" id="practiceCard">
-                            <div class="practice-card-header">
-                                <span class="badge-practice">🎯 Practice Challenge</span>
-                                <span class="badge-practice-model" id="practiceModelBadge">Gemma</span>
-                            </div>
-                            
-                            <div class="practice-question-text" id="practiceQuestionText"></div>
-                            
-                            <div class="practice-toggles">
-                                <button type="button" id="toggleHintBtn" class="pill-toggle">
-                                    <span>💡 Reveal Hint</span>
-                                </button>
-                                <button type="button" id="toggleSolutionBtn" class="pill-toggle">
-                                    <span>✅ Reveal Solution</span>
-                                </button>
+                        <!-- Practice Quiz Card (revealed when generated) -->
+                        <div class="quiz-card hidden" id="quizCard">
+                            <div class="quiz-card-header">
+                                <div>
+                                    <span class="badge-practice">🎯 Practice Quiz</span>
+                                    <h3 class="quiz-title">Test Your Understanding</h3>
+                                </div>
+                                <span class="badge-practice-model" id="quizModelBadge">Gemma</span>
                             </div>
 
-                            <div class="practice-collapse hidden" id="hintBox">
-                                <div class="collapse-header">Hint</div>
-                                <div class="collapse-body" id="hintText"></div>
+                            <!-- Progress Track & Question Count -->
+                            <div class="quiz-progress-section" id="quizProgressSection">
+                                <div class="quiz-progress-meta">
+                                    <span class="quiz-progress-text" id="quizProgressText">Question 1 of 5</span>
+                                    <span class="quiz-type-badge" id="quizTypeBadge">Multiple Choice</span>
+                                </div>
+                                <div class="quiz-progress-track">
+                                    <div class="quiz-progress-fill" id="quizProgressBar" style="width: 20%;"></div>
+                                </div>
                             </div>
 
-                            <div class="practice-collapse hidden" id="solutionBox">
-                                <div class="collapse-header">Step-by-Step Solution</div>
-                                <div class="collapse-body" id="solutionText"></div>
+                            <!-- Single Question Container -->
+                            <div class="quiz-single-question-card" id="quizQuestionCard">
+                                <div class="quiz-question-prompt" id="quizQuestionPrompt"></div>
+                                <div class="quiz-input-container" id="quizInputContainer"></div>
+                                <div class="quiz-feedback hidden" id="quizFeedback"></div>
+                            </div>
+
+                            <!-- Quiz Navigation & Actions -->
+                            <div class="quiz-nav-actions" id="quizNavActions">
+                                <button type="button" id="quizPrevBtn" class="secondary-btn quiz-nav-btn hidden">
+                                    <span>← Previous</span>
+                                </button>
+                                <div class="quiz-nav-right">
+                                    <button type="button" id="quizCheckBtn" class="primary-btn quiz-nav-btn">
+                                        <span class="btn-spinner hidden" id="gradeSpinner"></span>
+                                        <span id="quizCheckBtnText">Check Answer</span>
+                                    </button>
+                                    <button type="button" id="quizNextBtn" class="primary-btn quiz-nav-btn hidden">
+                                        <span id="quizNextBtnText">Next Question →</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Quiz Score Card (revealed after completing the quiz) -->
+                            <div class="quiz-score-card hidden" id="quizScoreCard">
+                                <div class="score-header">
+                                    <div class="score-badge">
+                                        <span class="score-number" id="scoreValue">0</span>
+                                        <span class="score-total">/ 5</span>
+                                    </div>
+                                    <div class="score-info">
+                                        <h4 class="score-headline" id="scoreHeadline">Quiz Completed!</h4>
+                                        <p class="score-message" id="scoreMessage">Great effort! Review your performance below.</p>
+                                    </div>
+                                </div>
+                                <div class="quiz-results-summary" id="quizResultsSummary"></div>
+                                <div class="score-buttons">
+                                    <button type="button" id="tryAgainBtn" class="secondary-btn">
+                                        <span>🔄 Try Again</span>
+                                    </button>
+                                    <button type="button" id="newQuizBtn" class="text-btn quiz-new-btn">
+                                        <span>✨ Generate New Quiz</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
