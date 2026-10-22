@@ -5,22 +5,33 @@ import base64
 from pathlib import Path
 from io import BytesIO
 from flask import Flask, render_template, request, jsonify
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 
 # Load environment variables from .env file in the application directory
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(dotenv_path=BASE_DIR / ".env")
+load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
 
 app = Flask(__name__)
 
-# Security configuration & model settings
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-# Default to official Gemma open-weight model on Google AI Studio API
-GEMMA_MODEL_ID = os.getenv("GEMMA_MODEL_ID", "gemma-2-27b-it").strip()
+def get_current_api_key() -> str:
+    """Reads GEMINI_API_KEY directly from the project's .env file, falling back to os.environ."""
+    env_path = BASE_DIR / ".env"
+    if env_path.exists():
+        vals = dotenv_values(dotenv_path=env_path)
+        key = vals.get("GEMINI_API_KEY")
+        if key and key.strip():
+            return key.strip()
+    return os.getenv("GEMINI_API_KEY", "").strip()
 
 def get_configured_model() -> tuple[str, str]:
-    """Returns (raw_model_id, clean_model_id_for_api)."""
-    raw = os.getenv("GEMMA_MODEL_ID", GEMMA_MODEL_ID).strip() or "gemma-2-27b-it"
+    """Returns (raw_model_id, clean_model_id_for_api) read from project .env."""
+    env_path = BASE_DIR / ".env"
+    raw = ""
+    if env_path.exists():
+        vals = dotenv_values(dotenv_path=env_path)
+        raw = (vals.get("GEMMA_MODEL_ID") or "").strip()
+    if not raw:
+        raw = os.getenv("GEMMA_MODEL_ID", "gemma-2-27b-it").strip() or "gemma-2-27b-it"
     clean = raw.removeprefix("models/")
     return raw, clean
 
@@ -36,9 +47,9 @@ _genai_client = None
 _cached_key = None
 
 def get_genai_client():
-    """Initializes and returns the official google-genai client singleton."""
+    """Initializes and returns the official google-genai client singleton using project .env key."""
     global _genai_client, _cached_key
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    api_key = get_current_api_key()
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not set. Please add your key to the .env file.")
     
@@ -49,7 +60,7 @@ def get_genai_client():
             raise ImportError(
                 "The 'google-genai' SDK is not installed. Please run: pip install -r requirements.txt"
             )
-        # Use official Google Gen AI SDK client pattern matching the test snippet
+        # Explicitly pass api_key read from project's .env
         _genai_client = genai.Client(api_key=api_key)
         _cached_key = api_key
     
@@ -296,7 +307,7 @@ def index():
 def health_check():
     """Returns backend system status, model configuration, and key availability."""
     raw_model, _ = get_configured_model()
-    current_key = os.getenv("GEMINI_API_KEY", "").strip()
+    current_key = get_current_api_key()
     has_key = bool(current_key and not current_key.startswith("your_"))
     vision_supported = is_model_vision_capable(raw_model)
     
@@ -342,7 +353,7 @@ def explain_question():
     if style not in STYLE_PROMPTS:
         style = "quick_easy"
 
-    current_key = os.getenv("GEMINI_API_KEY", "").strip()
+    current_key = get_current_api_key()
     if not current_key or current_key.startswith("your_"):
         return jsonify({
             "success": False,
@@ -382,10 +393,21 @@ def explain_question():
     )
 
     try:
-        response = client.models.generate_content(
-            model=model_to_use,
-            contents=full_prompt,
-        )
+        response = None
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model_to_use,
+                    contents=full_prompt,
+                )
+                if response and response.text:
+                    break
+            except Exception as call_err:
+                if attempt == 0 and ("500" in str(call_err) or "INTERNAL" in str(call_err)):
+                    import time
+                    time.sleep(1)
+                    continue
+                raise call_err
 
         if not response or not response.text:
             return jsonify({
@@ -405,13 +427,13 @@ def explain_question():
         err_msg = str(e)
         user_friendly_error = "An error occurred while connecting to the Gemma model API."
         
-        if "API_KEY_INVALID" in err_msg or ("400" in err_msg and "key" in err_msg.lower()):
-            user_friendly_error = "Invalid API Key: Please verify that your GEMINI_API_KEY in the .env file is correct and active."
+        if any(term in err_msg for term in ["API_KEY_INVALID", "ACCESS_TOKEN_TYPE_UNSUPPORTED", "UNAUTHENTICATED", "401"]) or ("400" in err_msg and "key" in err_msg.lower()):
+            user_friendly_error = "Invalid API Key: Please verify that your GEMINI_API_KEY in the .env file is correct, active, and copied directly from Google AI Studio."
         elif "RESOURCE_EXHAUSTED" in err_msg or "429" in err_msg:
             user_friendly_error = "Rate limit reached: Google AI Studio has temporarily throttled requests. Please wait a minute and try again."
         elif "NOT_FOUND" in err_msg or "404" in err_msg:
             user_friendly_error = (
-                f"Model Not Found: The model '{GEMMA_MODEL_ID}' was not found on your Google AI API tier. "
+                f"Model Not Found: The model '{raw_model}' was not found on your Google AI API tier. "
                 "You can change GEMMA_MODEL_ID in .env to another supported Gemma model like 'gemma-2-9b-it' or 'gemma-2-27b-it'."
             )
         elif "certificate" in err_msg.lower() or "ssl" in err_msg.lower():
@@ -448,7 +470,7 @@ def generate_practice_quiz():
             "error": "Original question or explanation context is required to generate a practice quiz."
         }), 400
 
-    current_key = os.getenv("GEMINI_API_KEY", "").strip()
+    current_key = get_current_api_key()
     if not current_key or current_key.startswith("your_"):
         return jsonify({
             "success": False,
@@ -500,9 +522,12 @@ def generate_practice_quiz():
 
     except Exception as e:
         err_msg = str(e)
+        user_friendly_error = f"Failed to generate practice quiz: {err_msg}"
+        if any(term in err_msg for term in ["API_KEY_INVALID", "ACCESS_TOKEN_TYPE_UNSUPPORTED", "UNAUTHENTICATED", "401"]):
+            user_friendly_error = "Invalid API Key: Please verify that your GEMINI_API_KEY in the .env file is active."
         return jsonify({
             "success": False,
-            "error": f"Failed to generate practice quiz: {err_msg}",
+            "error": user_friendly_error,
             "raw_details": err_msg
         }), 500
 
