@@ -6,12 +6,25 @@ from pathlib import Path
 from io import BytesIO
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv, dotenv_values
+from PIL import Image
 
 # Load environment variables from .env file in the application directory
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
 
 app = Flask(__name__)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+# Max upload image size: 5 MB
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 def get_current_api_key() -> str:
     """Reads GEMINI_API_KEY directly from the project's .env file, falling back to os.environ."""
@@ -35,13 +48,22 @@ def get_configured_model() -> tuple[str, str]:
     clean = raw.removeprefix("models/")
     return raw, clean
 
-# Set of known Gemma models and their multimodal capability
-MULTIMODAL_GEMMA_MODELS = {"gemma-3-multimodal", "gemma-4-vision"}
+# Set of verified multimodal Gemma models supporting image input
+MULTIMODAL_GEMMA_MODELS = {
+    "gemma-4-26b-a4b-it",
+    "gemma-3-multimodal",
+    "gemma-4-vision"
+}
 
 def is_model_vision_capable(model_id: str) -> bool:
     """Check if the configured Gemma model is verified to support image input."""
-    model_lower = model_id.lower()
-    return any(name in model_lower for name in MULTIMODAL_GEMMA_MODELS) or "vision" in model_lower
+    model_lower = model_id.lower().removeprefix("models/")
+    return (
+        model_lower in MULTIMODAL_GEMMA_MODELS
+        or any(name in model_lower for name in MULTIMODAL_GEMMA_MODELS)
+        or "vision" in model_lower
+        or "gemma-4" in model_lower
+    )
 
 _genai_client = None
 _cached_key = None
@@ -301,7 +323,8 @@ def parse_and_validate_quiz(raw_text: str):
 @app.route("/")
 def index():
     """Renders the main SnapExplain AI interface."""
-    return render_template("index.html")
+    import time
+    return render_template("index.html", cache_version=int(time.time()))
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
@@ -334,20 +357,30 @@ def health_check():
 @app.route("/api/explain", methods=["POST"])
 def explain_question():
     """
-    Accepts question, explanation style, and optional image.
+    Accepts question, explanation style, and optional image (via multipart form or JSON base64).
     Generates concise explanation strictly using the verified Gemma model.
     """
     raw_model, model_to_use = get_configured_model()
 
-    data = request.get_json(silent=True) or {}
-    question = (data.get("question") or "").strip()
-    style = data.get("style", "quick_easy").strip().lower()
-    image_b64 = data.get("image")
+    image_file = None
+    image_b64 = None
 
-    if not question and not image_b64:
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        question = (data.get("question") or "").strip()
+        style = data.get("style", "quick_easy").strip().lower()
+        image_b64 = data.get("image")
+    else:
+        question = (request.form.get("question") or "").strip()
+        style = (request.form.get("style") or "quick_easy").strip().lower()
+        image_b64 = request.form.get("image")
+        image_file = request.files.get("image")
+
+    has_image = bool(image_file or image_b64)
+    if not question and not has_image:
         return jsonify({
             "success": False,
-            "error": "Please enter a question or problem to explain."
+            "error": "Please enter a question or upload an image to explain."
         }), 400
 
     if style not in STYLE_PROMPTS:
@@ -361,12 +394,60 @@ def explain_question():
             "code": "MISSING_API_KEY"
         }), 401
 
-    if image_b64 and not is_model_vision_capable(raw_model):
+    if has_image and not is_model_vision_capable(raw_model):
         return jsonify({
             "success": False,
-            "error": f"The configured open-weight model '{raw_model}' is a text-only model. Image analysis is not supported by this Gemma checkpoint. Please type or paste the text of your question.",
+            "error": f"The configured open-weight model '{raw_model}' does not support image analysis. Please use a vision-capable Gemma checkpoint (e.g. gemma-4-26b-a4b-it).",
             "code": "VISION_NOT_SUPPORTED"
         }), 400
+
+    # Process and validate image safely in memory
+    model_image = None
+    if has_image:
+        try:
+            raw_bytes = None
+            if image_file:
+                fn = (image_file.filename or "").lower()
+                ext = Path(fn).suffix
+                if ext and ext not in ALLOWED_IMAGE_EXTENSIONS:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Unsupported image format '{ext}'. Please upload a PNG, JPEG, or WEBP image."
+                    }), 400
+                
+                raw_bytes = image_file.read()
+                if len(raw_bytes) > MAX_IMAGE_BYTES:
+                    return jsonify({
+                        "success": False,
+                        "error": "Image file exceeds the 5MB size limit. Please upload a smaller image."
+                    }), 400
+                if len(raw_bytes) == 0:
+                    return jsonify({
+                        "success": False,
+                        "error": "The uploaded image file is empty."
+                    }), 400
+            elif image_b64:
+                if "," in image_b64:
+                    image_b64 = image_b64.split(",", 1)[1]
+                raw_bytes = base64.b64decode(image_b64)
+                if len(raw_bytes) > MAX_IMAGE_BYTES:
+                    return jsonify({
+                        "success": False,
+                        "error": "Image exceeds the 5MB size limit."
+                    }), 400
+
+            if raw_bytes:
+                # Open with Pillow and normalize to in-memory PNG buffer for Gemma
+                loaded_img = Image.open(BytesIO(raw_bytes)).convert("RGB")
+                png_buf = BytesIO()
+                loaded_img.save(png_buf, format="PNG")
+                png_buf.seek(0)
+                model_image = Image.open(png_buf)
+        except Exception as img_err:
+            return jsonify({
+                "success": False,
+                "error": f"Could not process image: {str(img_err)}. Please ensure it is a valid PNG, JPEG, or WEBP file."
+            }), 400
 
     try:
         client = get_genai_client()
@@ -381,16 +462,20 @@ def explain_question():
     system_instruction = (
         "You are SnapExplain AI, an expert, patient, and engaging academic tutor powered strictly by the Gemma open-weight model. "
         "Your mission is to make difficult concepts crystal-clear for students. "
-        "Keep responses concise, readable, and directly relevant to the student's question. "
+        "Keep responses concise, readable, and directly relevant to the student's question or diagram. "
         "Use clean Markdown formatting with clear headers (##, ###), bullet points, and bold keywords."
     )
     
+    question_prompt = question if question else "Please solve, analyze, and explain the question, formula, or diagram shown in this image."
+
     full_prompt = (
         f"{system_instruction}\n\n"
         f"Style Request: {style_instruction}\n\n"
-        f"Student Question / Problem:\n\"\"\"{question}\"\"\"\n\n"
+        f"Student Question / Context:\n\"\"\"{question_prompt}\"\"\"\n\n"
         f"Provide the explanation now in the requested style:"
     )
+
+    contents = [full_prompt, model_image] if model_image is not None else full_prompt
 
     try:
         response = None
@@ -398,7 +483,7 @@ def explain_question():
             try:
                 response = client.models.generate_content(
                     model=model_to_use,
-                    contents=full_prompt,
+                    contents=contents,
                 )
                 if response and response.text:
                     break
@@ -420,7 +505,8 @@ def explain_question():
             "success": True,
             "explanation": response.text,
             "model_used": raw_model,
-            "style": style
+            "style": style,
+            "has_image": bool(model_image is not None)
         })
 
     except Exception as e:
